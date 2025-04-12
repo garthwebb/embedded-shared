@@ -3,11 +3,14 @@
 
 extern Logger *LOGGER;
 
-Telemetry::Telemetry(const String &url, const String &db) {
+String hostname;
+
+Telemetry::Telemetry(const String &url, const String &db, const char *device_hostname) {
     LOGGER->log("Initializing Telemtry logger");
     Serial.println("Initialziing Telemtry logger: ");
 
     client = new InfluxDBClient(url, db);
+	hostname = device_hostname;
 
     if (client->validateConnection()) {
         Serial.println("\tConnected to Telemetry InfluxDB: " + client->getServerUrl());
@@ -36,7 +39,6 @@ bool Telemetry::report() {
 	int8_t rssi = WiFi.RSSI();
 	String mac = WiFi.macAddress();
 	String ssid = WiFi.SSID();
-	String device = DEVICE_HOSTNAME;
 
 	esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
@@ -46,7 +48,7 @@ bool Telemetry::report() {
 	String cores = String(chip_info.cores);
 
 	Point telemetry("host_info");
-	telemetry.addTag("device", device);
+	telemetry.addTag("device", hostname);
 	telemetry.addTag("SSID", ssid);
 	telemetry.addTag("mac", mac);
 	telemetry.addTag("model", model);

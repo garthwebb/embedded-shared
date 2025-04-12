@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 
-#include "monitor.h"
 #include "Logger.h"
 
 // Wait 10s for a connection
@@ -13,7 +12,7 @@ class WirelessControl {
     public:
 
     WirelessControl();
-    static void init_wifi(const char *ssid, const char *passwd);
+    static void init_wifi(const char *ssid, const char *passwd, const char *hostname);
     static bool connect();
     static void listNetworks();
     static void monitor();

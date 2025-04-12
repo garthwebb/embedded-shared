@@ -5,8 +5,8 @@ extern Logger *LOGGER;
 
 bool WirelessControl::is_connected = false;
 
-void WirelessControl::init_wifi(const char *ssid, const char *passwd) {
-    WiFi.setHostname(HOSTNAME);
+void WirelessControl::init_wifi(const char *ssid, const char *passwd, const char *hostname) {
+    WiFi.setHostname(hostname);
 
     listNetworks();
 

@@ -14,7 +14,7 @@ class Telemetry {
     bool log_events = true;
 
     public:
-    Telemetry(const String &serverUrl, const String &db);
+    Telemetry(const String &serverUrl, const String &db, const char *device_hostname);
 
     bool report();
 	String chip_model_to_string(int model);
