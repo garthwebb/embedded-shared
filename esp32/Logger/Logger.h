@@ -5,18 +5,11 @@
 #include <WiFiUdp.h>
 #include <string>
 
-#include "monitor.h"
-
-// Syslog server connection info
-#define SYSLOG_SERVER "tigerbackup.local"
-//#define SYSLOG_IP IPAddress(192, 168, 3, 204)
-#define SYSLOG_PORT 514
-#define DEVICE_HOSTNAME "greenhouse-esp32"
-#define APP_NAME "env-control"
-
 class Logger {
 	public:
+	Syslog *syslog;
 
+	void init(const char *server, uint16_t port, const char *hostname, const char *app_name);
 	bool log(String msg);
 	bool log_info(String msg);
 	bool log_error(String msg);
