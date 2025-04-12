@@ -1,0 +1,10 @@
+{
+	"name": "Telemetry",
+	"version": "1.0.0",
+	"dependencies": [
+		{
+			"name": "tobiasschuerg/ESP8266 Influxdb",
+			"version": "^3.13.2"
+		}
+	]
+  }

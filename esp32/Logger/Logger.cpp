@@ -5,11 +5,10 @@
 WiFiUDP udpClient;
 
 // Create a new syslog instance with LOG_KERN facility
-//Syslog *syslog;
+Syslog *syslog = nullptr;
 
 void Logger::init(const char *server, uint16_t port, const char *hostname, const char *app_name) {
 	syslog = new Syslog(udpClient, server, port, hostname, app_name, LOG_KERN);
-
 }
 
 bool Logger::log(String msg) {

@@ -5,7 +5,7 @@
 
 #include "Logger.h"
 
-// Wait 10s for a connection
+// How long to wait for a connection
 #define WIFI_CONNECT_WAIT 5000
 
 class WirelessControl {
