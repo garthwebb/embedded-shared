@@ -21,7 +21,13 @@ bool Logger::log_info(String msg) {
 		Serial.println("WiFi disconnected: Syslog serial fallback [info]: " + msg);
 		return false;
 	}
-	return syslog->log(LOG_INFO, msg.c_str());
+
+#ifdef LOG_TO_SYSLOG
+	// Exit here if LOG_TO_SYSLOG is defined and false
+	if (!LOG_TO_SYSLOG) { Serial.printf("[INFO] %s\n", msg.c_str()); return true; }
+#endif
+
+		return syslog->log(LOG_INFO, msg.c_str());
 }
 
 bool Logger::log_error(String msg) {
@@ -30,6 +36,12 @@ bool Logger::log_error(String msg) {
 		Serial.println("WiFi disconnected: Syslog serial fallback [error]: " + msg);
 		return false;
 	}
+
+#ifdef LOG_TO_SYSLOG
+	// Exit here if LOG_TO_SYSLOG is defined and false
+	if (!LOG_TO_SYSLOG) { Serial.printf("[ERROR] %s\n", msg.c_str()); return true; }
+#endif
+
 	return syslog->log(LOG_ERR, msg.c_str());
 }
 
@@ -39,5 +51,11 @@ bool Logger::log_debug(String msg) {
 		Serial.println("WiFi disconnected: Syslog serial fallback [debug]: " + msg);
 		return false;
 	}
+
+#ifdef LOG_TO_SYSLOG
+	// Exit here if LOG_TO_SYSLOG is defined and false
+	if (!LOG_TO_SYSLOG) { Serial.printf("[DEBUG] %s\n", msg.c_str()); return true; }
+#endif
+
 	return syslog->log(LOG_DEBUG, msg.c_str());
 }
