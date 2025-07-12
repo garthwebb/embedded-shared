@@ -11,7 +11,7 @@ Telemetry::Telemetry(const String &url, const String &db, const char *device_hos
 
     client = new InfluxDBClient(url, db);
 	hostname = device_hostname;
-
+	
     if (client->validateConnection()) {
         Serial.println("\tConnected to Telemetry InfluxDB: " + client->getServerUrl());
         LOGGER->log("Connected to Telemetry InfluxDB at " + client->getServerUrl());
@@ -25,7 +25,7 @@ Telemetry::Telemetry(const String &url, const String &db, const char *device_hos
     }
 }
 
-bool Telemetry::report() {
+bool Telemetry::report_metrics() {
 	Serial.println("Reporting telemetry data");
 
 	float chipTemp = temperatureRead();
@@ -68,7 +68,12 @@ bool Telemetry::report() {
 	}
 
 	if (!client->writePoint(telemetry)) {
-		LOGGER->log_error("Failed to add telemetry: " + client->getLastErrorMessage());
+		String error_msg = client->getLastErrorMessage();
+		if (error_msg.length() > 0) {
+			LOGGER->log_error("Failed to add telemetry: " + error_msg);
+		} else {
+			LOGGER->log_error("Failed to add telemetry: Unknown InfluxDB error");
+		}
 		return false;
 	}
 

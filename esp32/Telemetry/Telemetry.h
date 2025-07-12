@@ -16,7 +16,7 @@ class Telemetry {
     public:
     Telemetry(const String &serverUrl, const String &db, const char *device_hostname);
 
-    bool report();
+    bool report_metrics();
 	String chip_model_to_string(int model);
 
     void enable();
