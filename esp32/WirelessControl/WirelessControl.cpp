@@ -49,9 +49,14 @@ void WirelessControl::monitor() {
 		return;
 	}
 
+    // We are no longer connected
+    is_connected = false;
+
+    // Keep track of how long it takes to reconnect
+    uint32_t reconnect_start_time = millis();
+
 	// If we were previously connected, explicitly disconnect and reconnect
-	if (is_connected) {
-		is_connected = false;
+	if (was_connected) {
 		Serial.println("Reconnecting to WiFi...");
         WiFi.disconnect();
         WiFi.reconnect();
@@ -71,7 +76,7 @@ void WirelessControl::monitor() {
 
 	// Log that we lost a connection but are now reconnected
 	if (was_connected) {
-		LOGGER->log_error("WiFi connection was lost");
+        LOGGER->log_error("WiFi connection was lost: took " + String((millis() - reconnect_start_time) / 1000.0, 2) + "s to reconnect.");
 	}
 
     LOGGER->log("Connected to " + WiFi.SSID() + " with IP " + WiFi.localIP().toString());

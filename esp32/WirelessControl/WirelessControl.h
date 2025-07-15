@@ -11,7 +11,8 @@
 class WirelessControl {
     public:
 
-    WirelessControl();
+    // No need for a constructor in a class with only static methods and variables
+    
     static void init_wifi(const char *ssid, const char *passwd, const char *hostname);
     static bool connect();
     static void listNetworks();
