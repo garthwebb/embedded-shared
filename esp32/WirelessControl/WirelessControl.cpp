@@ -4,31 +4,45 @@
 extern Logger *LOGGER;
 
 bool WirelessControl::is_connected = false;
+const char *WirelessControl::_ssid = nullptr;
+const char *WirelessControl::_passwd = nullptr;
 
 void WirelessControl::init_wifi(const char *ssid, const char *passwd, const char *hostname) {
     WiFi.setHostname(hostname);
+    _ssid = ssid;
+    _passwd = passwd;
 
     listNetworks();
 
     Serial.println("Connecting to " + String(ssid) + ":");
 
-    WiFi.begin(ssid, passwd);
+    WiFi.begin(_ssid, _passwd);
 
-	while (!connect()) {
-        Serial.print("Failed to connect to WiFi, retrying...");
-        WiFi.disconnect();
-        WiFi.reconnect();
+	while (!block_until_connect()) {
+        reset_connection();
     }
 
     is_connected = true;
     Serial.println("Connected to " + String(ssid) + " with IP " + WiFi.localIP().toString());
 }
 
-bool WirelessControl::connect() {
+void WirelessControl::reset_connection() {
+    Serial.println("WiFi disconnected, trying to reconnect...");
+    WiFi.disconnect();
+    // reassert STA mode
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(_ssid, _passwd);
+}
+
+bool WirelessControl::block_until_connect() {
     int status = WiFi.status();
-    while (status != WL_CONNECTED) {
-        delay(WIFI_CONNECT_WAIT);
-        Serial.print(".");
+    unsigned long start_time = millis();
+    unsigned long end_time = start_time + WIFI_CONNECT_WAIT_MS;
+
+    // Block until we're etther connected or we time out
+    while ((status != WL_CONNECTED) && (millis() < end_time)) {
+        // Give a little time between checks
+        delay(WIFI_CONNECT_POLL_MS);
         status = WiFi.status();
     }
 
@@ -52,26 +66,13 @@ void WirelessControl::monitor() {
     // We are no longer connected
     is_connected = false;
 
-    // Keep track of how long it takes to reconnect
+    // Keep track of how long it takes to reconnect, and reset thhe connection
     uint32_t reconnect_start_time = millis();
+	reset_connection();
 
-	// If we were previously connected, explicitly disconnect and reconnect
-	if (was_connected) {
-		Serial.println("Reconnecting to WiFi...");
-        WiFi.disconnect();
-        WiFi.reconnect();
-	}
-
-    // Wait here long enough to get a success or error status.  Don't retry
-    // immediately if error, instead, exit and wait for the next call to monitor() 
-    while (is_neutral_status(status)) {
-        delay(WIFI_CONNECT_WAIT);
-        status = WiFi.status();
-    }
-
-    if (is_error_status(status)) {
-        printStatus(status);
-        return;
+    // Block here until we get a connection otherwise, let the watchdog reset us
+	while (!block_until_connect()) {
+        reset_connection();
     }
 
 	// Log that we lost a connection but are now reconnected
@@ -87,7 +88,7 @@ void WirelessControl::monitor() {
 void WirelessControl::listNetworks() {
     // scan for nearby networks:
     Serial.println("** Scanning Networks **");
-    int numSsid = WiFi.scanNetworks();
+    int numSsid = WiFi.scanNetworks(false, false, false, 5000); // 5s timeout
     if (numSsid == -1) {
         Serial.println("Couldn't get a wifi connection");
         return;
