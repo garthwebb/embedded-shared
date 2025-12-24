@@ -1,5 +1,6 @@
 #include <WirelessControl.h>
 #include <WiFi.h>
+#include <cstring>
 
 extern Logger *LOGGER;
 
@@ -12,8 +13,6 @@ void WirelessControl::init_wifi(const char *ssid, const char *passwd, const char
     _ssid = ssid;
     _passwd = passwd;
 
-    listNetworks();
-
     Serial.println("Connecting to " + String(ssid) + ":");
 
     WiFi.begin(_ssid, _passwd);
@@ -24,6 +23,74 @@ void WirelessControl::init_wifi(const char *ssid, const char *passwd, const char
 
     is_connected = true;
     Serial.println("Connected to " + String(ssid) + " with IP " + WiFi.localIP().toString());
+}
+
+void WirelessControl::init_wifi_from_list(const char *const *credentials, size_t count, const char *hostname) {
+    if (count == 0) {
+        Serial.println("Error: credentials list is empty");
+        return;
+    }
+
+    // Scan for nearby networks
+    Serial.println("** Scanning for known networks **");
+    int numSsid = WiFi.scanNetworks(false, false, false, 5000); // 5s timeout
+    if (numSsid == -1) {
+        Serial.println("Couldn't scan wifi networks");
+        return;
+    }
+
+    // Look for a match in the provided list
+    const char *matched_ssid = nullptr;
+    const char *matched_passwd = nullptr;
+    char parsed_ssid[64];
+    char parsed_passwd[64];
+
+    for (size_t i = 0; i < count; ++i) {
+        // Parse "SSID:PASS" format
+        const char *colon = strchr(credentials[i], ':');
+        if (colon == nullptr) {
+            Serial.print("Warning: Invalid credential format (missing ':') at index ");
+            Serial.println(i);
+            continue;
+        }
+
+        size_t ssid_len = colon - credentials[i];
+        size_t pass_len = strlen(colon + 1);
+
+        // Validate lengths
+        if (ssid_len >= sizeof(parsed_ssid) || pass_len >= sizeof(parsed_passwd)) {
+            Serial.print("Warning: Credential too long at index ");
+            Serial.println(i);
+            continue;
+        }
+
+        // Extract SSID and password
+        strncpy(parsed_ssid, credentials[i], ssid_len);
+        parsed_ssid[ssid_len] = '\0';
+        strcpy(parsed_passwd, colon + 1);
+
+        // Check if this SSID is in scan results
+        for (int j = 0; j < numSsid; ++j) {
+            if (strcmp(parsed_ssid, WiFi.SSID(j).c_str()) == 0) {
+                matched_ssid = parsed_ssid;
+                matched_passwd = parsed_passwd;
+                Serial.print("Found known network: ");
+                Serial.println(matched_ssid);
+                break;
+            }
+        }
+        if (matched_ssid != nullptr) {
+            break;
+        }
+    }
+
+    if (matched_ssid == nullptr) {
+        Serial.println("Error: No known networks found in scan results");
+        return;
+    }
+
+    // Call the standard init_wifi with the matched network
+    init_wifi(matched_ssid, matched_passwd, hostname);
 }
 
 void WirelessControl::reset_connection() {
@@ -76,11 +143,13 @@ void WirelessControl::monitor() {
     }
 
 	// Log that we lost a connection but are now reconnected
-	if (was_connected) {
+	if (LOGGER != nullptr && was_connected) {
         LOGGER->log_error("WiFi connection was lost: took " + String((millis() - reconnect_start_time) / 1000.0, 2) + "s to reconnect.");
 	}
 
-    LOGGER->log("Connected to " + WiFi.SSID() + " with IP " + WiFi.localIP().toString());
+    if (LOGGER != nullptr) {
+        LOGGER->log("Connected to " + WiFi.SSID() + " with IP " + WiFi.localIP().toString());
+    }
 	Serial.println("Connected to " + WiFi.SSID() + " with IP " + WiFi.localIP().toString());
  	is_connected = true;
 }

@@ -15,6 +15,14 @@ class WirelessControl {
     // No need for a constructor in a class with only static methods and variables
 
     static void init_wifi(const char *ssid, const char *passwd, const char *hostname);
+    static void init_wifi_from_list(const char *const *credentials, size_t count, const char *hostname);
+
+    // Template overload that deduces the number of elements in a fixed C-style array
+    // so callers can pass an array literal or macro like `WIFI_CREDENTIALS_LIST`
+    template <size_t N>
+    static void init_wifi_from_list(const char *const (&credentials)[N], const char *hostname) {
+        init_wifi_from_list(credentials, N, hostname);
+    }
     static void reset_connection();
     static bool block_until_connect();
     static void listNetworks();
