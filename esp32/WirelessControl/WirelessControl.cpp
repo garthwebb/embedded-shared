@@ -8,10 +8,28 @@ bool WirelessControl::is_connected = false;
 const char *WirelessControl::_ssid = nullptr;
 const char *WirelessControl::_passwd = nullptr;
 
+static char stored_ssid[64];
+static char stored_passwd[64];
+
+namespace {
+    // Copy a C-string into a fixed buffer with guaranteed null termination.
+    void copy_cstr(char *dest, size_t dest_size, const char *src) {
+        if (dest_size == 0) {
+            return;
+        }
+        strncpy(dest, src, dest_size - 1);
+        dest[dest_size - 1] = '\0';
+    }
+}
+
+
 void WirelessControl::init_wifi(const char *ssid, const char *passwd, const char *hostname) {
     WiFi.setHostname(hostname);
-    _ssid = ssid;
-    _passwd = passwd;
+    copy_cstr(stored_ssid, sizeof(stored_ssid), ssid);
+    copy_cstr(stored_passwd, sizeof(stored_passwd), passwd);
+
+    _ssid = stored_ssid;
+    _passwd = stored_passwd;
 
     Serial.println("Connecting to " + String(ssid) + ":");
 
@@ -31,12 +49,26 @@ void WirelessControl::init_wifi_from_list(const char *const *credentials, size_t
         return;
     }
 
-    // Scan for nearby networks
+    // Use Arduino WiFi API for scanning (it handles initialization internally)
+    Serial.println("Known credential list:");
+    for (size_t i = 0; i < count; ++i) {
+        Serial.printf("  [%d] %s\n", (int)i, credentials[i]);
+    }
+
     Serial.println("** Scanning for known networks **");
-    int numSsid = WiFi.scanNetworks(false, false, false, 5000); // 5s timeout
-    if (numSsid == -1) {
-        Serial.println("Couldn't scan wifi networks");
+    WiFi.mode(WIFI_STA);
+    int numSsid = WiFi.scanNetworks();
+    
+    if (numSsid <= 0) {
+        Serial.printf("Error: No networks found (scan result: %d)\n", numSsid);
         return;
+    }
+
+    Serial.printf("Scan results: %d networks found\n", numSsid);
+
+    // Display scanned APs
+    for (int j = 0; j < numSsid; ++j) {
+        Serial.printf("  [%d] %s (RSSI %d dBm)\n", j, WiFi.SSID(j).c_str(), WiFi.RSSI(j));
     }
 
     // Look for a match in the provided list
@@ -44,13 +76,14 @@ void WirelessControl::init_wifi_from_list(const char *const *credentials, size_t
     const char *matched_passwd = nullptr;
     char parsed_ssid[64];
     char parsed_passwd[64];
+    static char selected_ssid[64];
+    static char selected_passwd[64];
 
     for (size_t i = 0; i < count; ++i) {
         // Parse "SSID:PASS" format
         const char *colon = strchr(credentials[i], ':');
         if (colon == nullptr) {
-            Serial.print("Warning: Invalid credential format (missing ':') at index ");
-            Serial.println(i);
+            Serial.printf("Warning: Invalid credential format (missing ':') at index %d\n", (int)i);
             continue;
         }
 
@@ -59,8 +92,7 @@ void WirelessControl::init_wifi_from_list(const char *const *credentials, size_t
 
         // Validate lengths
         if (ssid_len >= sizeof(parsed_ssid) || pass_len >= sizeof(parsed_passwd)) {
-            Serial.print("Warning: Credential too long at index ");
-            Serial.println(i);
+            Serial.printf("Warning: Credential too long at index %d\n", (int)i);
             continue;
         }
 
@@ -72,10 +104,11 @@ void WirelessControl::init_wifi_from_list(const char *const *credentials, size_t
         // Check if this SSID is in scan results
         for (int j = 0; j < numSsid; ++j) {
             if (strcmp(parsed_ssid, WiFi.SSID(j).c_str()) == 0) {
-                matched_ssid = parsed_ssid;
-                matched_passwd = parsed_passwd;
-                Serial.print("Found known network: ");
-                Serial.println(matched_ssid);
+                copy_cstr(selected_ssid, sizeof(selected_ssid), parsed_ssid);
+                copy_cstr(selected_passwd, sizeof(selected_passwd), parsed_passwd);
+                matched_ssid = selected_ssid;
+                matched_passwd = selected_passwd;
+                Serial.printf("Found known network: %s\n", matched_ssid);
                 break;
             }
         }

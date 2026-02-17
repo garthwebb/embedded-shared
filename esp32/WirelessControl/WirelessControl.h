@@ -9,6 +9,7 @@
 #define WIFI_CONNECT_WAIT_MS 10000
 #define WIFI_CONNECT_POLL_MS 500
 
+
 class WirelessControl {
     public:
 
